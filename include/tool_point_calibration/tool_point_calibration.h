@@ -2,6 +2,7 @@
 #define TOOL_POINT_CALIBRATION_H
 
 #include <Eigen/Dense>
+#include <vector>
 
 namespace tool_point_calibration
 {
@@ -10,24 +11,16 @@ typedef std::vector<Eigen::Affine3d, Eigen::aligned_allocator<Eigen::Affine3d>> 
 
 struct TcpCalibrationResult
 {
-    /**
-     * @brief tcp_offset
-     */
+    /** @brief tcp_offset */
     Eigen::Vector3d tcp_offset;
 
-    /**
-     * @brief touch_point
-     */
+    /** @brief touch_point */
     Eigen::Vector3d touch_point;
 
-    /**
-     * @brief average_residual
-     */
+    /** @brief average_residual */
     double average_residual;
 
-    /**
-     * @brief converged
-     */
+    /** @brief converged */
     bool converged;
 
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW

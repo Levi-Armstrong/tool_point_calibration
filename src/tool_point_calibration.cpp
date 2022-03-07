@@ -1,5 +1,6 @@
 #include <tool_point_calibration/tool_point_calibration.h>
 
+#include <array>
 #include <ceres/ceres.h>
 #include <ceres/rotation.h>
 
@@ -10,7 +11,7 @@ struct ToolPointEstimator
 {
   ToolPointEstimator(const Eigen::Affine3d& robot_pose)
   {
-      ceres::RotationMatrixToAngleAxis(robot_pose.rotation().data(), angle_axis_);
+      ceres::RotationMatrixToAngleAxis(robot_pose.rotation().data(), angle_axis_.data());
       translation_[0] = robot_pose.translation()(0);
       translation_[1] = robot_pose.translation()(1);
       translation_[2] = robot_pose.translation()(2);
@@ -20,17 +21,17 @@ struct ToolPointEstimator
   bool operator()(const T* const tool, const T* const point, T* residuals) const
   {
     // Convert "angle_axis_" to type T
-    T angle_axis[3];
+    std::array<T, 3> angle_axis; // NOLINT
     angle_axis[0] = T(angle_axis_[0]);
     angle_axis[1] = T(angle_axis_[1]);
     angle_axis[2] = T(angle_axis_[2]);
 
     // Rotate the estimated 'tool' offset and put the result into 'rotated_pt'
-    T rotated_pt[3];
-    ceres::AngleAxisRotatePoint(angle_axis, tool, rotated_pt);
+    std::array<T, 3> rotated_pt; // NOLINT
+    ceres::AngleAxisRotatePoint(angle_axis.data(), tool, rotated_pt.data());
 
     // Convert "translation_" to type T and calculate the tool point in the world frame
-    T pos[3];
+    std::array<T, 3> pos; // NOLINT
     pos[0] = rotated_pt[0] + T(translation_[0]);
     pos[1] = rotated_pt[1] + T(translation_[1]);
     pos[2] = rotated_pt[2] + T(translation_[2]);
@@ -42,8 +43,8 @@ struct ToolPointEstimator
     return true;
   }
 
-  double angle_axis_[3];
-  double translation_[3];
+  std::array<double, 3> angle_axis_{0, 0, 0};
+  std::array<double, 3> translation_{0, 0, 0};
 };
 
 
@@ -56,15 +57,15 @@ tool_point_calibration::calibrateTcp(const tool_point_calibration::Affine3dVecto
     Eigen::Vector3d internal_touch_guess = touch_pt_guess;
 
     ceres::Problem problem;
-    for (std::size_t i = 0; i < tool_poses.size(); ++i)
+    for (const auto& tool_pose : tool_poses)
     {
-        auto* cost_fn =
-            new ceres::AutoDiffCostFunction<ToolPointEstimator, 3, 3, 3>(
-              new ToolPointEstimator( tool_poses[i] )
-            );
+      // NOLINTNEXTLINE
+      auto* cost_fn =
+          new ceres::AutoDiffCostFunction<ToolPointEstimator, 3, 3, 3>(
+            new ToolPointEstimator( tool_pose )
+          );
 
-        problem.AddResidualBlock(cost_fn, NULL, internal_tcp_guess.data(),
-                                 internal_touch_guess.data());
+      problem.AddResidualBlock(cost_fn, nullptr, internal_tcp_guess.data(), internal_touch_guess.data());
     }
 
     ceres::Solver::Options options;
